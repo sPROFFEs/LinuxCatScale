@@ -2,9 +2,10 @@
 #
 # Cat-Scale Linux Collection Script
 # Version: 1.3.1
-# Release Date: 2021-11-30
+# Release Date: 2025-01-30
 #
 # Latest public release available at https://github.com/FSecureLABS/LinuxCatScale
+# Latest public modifed release available at https://github.com/sproffes/LinuxCatScale
 #
 # Instructions:
 # 1. Ensure the script is executable, run "chmod +x <script_name>"
@@ -114,6 +115,7 @@ fi
 #
 starttheshow(){ #Production
 	# Prompt for output path 
+
 	clear
 	echo " **********************************************************************************************"
 	echo " *  ██████╗ █████╗ ████████╗      ███████╗ ██████╗ █████╗ ██╗     ███████╗         ^~^        *"
@@ -123,8 +125,12 @@ starttheshow(){ #Production
 	echo " * ╚██████╗██║  ██║   ██║         ███████║╚██████╗██║  ██║███████╗███████╗    /____▄▄▄____\   *"
 	echo " *  ╚═════╝╚═╝  ╚═╝   ╚═╝         ╚══════╝ ╚═════╝╚═╝  ╚═╝╚══════╝╚══════╝    =============   *"
 	echo " *                                  Linux Collection                                          *"
+	echo " *                  Original: github.com/WithSecureLabs/LinuxCatScale                         *"
+	echo " *                  Modified: github.com/sPROFFEs/LinuxCatScale				    *"
+	echo " *                  Collection Date: $(date '+%Y-%m-%d %H:%M:%S')                      	    *"
+	echo " *                  Host: $HOSTNAME                                   			    *"
 	echo " **********************************************************************************************"
-    
+   
 	# Exit if $OUTDIR folder exists.
 	if [ -d $OUTROOT/$OUTDIR ]; then
 	 echo " "
@@ -677,6 +683,73 @@ get_cron_Solaris(){ #Production
 }
 
 
+#
+# Additional data
+#
+get_additional_info_GNU(){ #Production
+    # DNS y hosts
+    if [ -f /etc/hosts.allow ]; then
+        cp /etc/hosts.allow $OUTROOT/$OUTDIR/System_Info/$OUTFILE-hosts-allow.txt
+    fi
+    
+    if [ -f /etc/hosts.deny ]; then
+        cp /etc/hosts.deny $OUTROOT/$OUTDIR/System_Info/$OUTFILE-hosts-deny.txt
+    fi
+    
+    if [ -f /etc/resolv.conf ]; then
+        cp /etc/resolv.conf $OUTROOT/$OUTDIR/System_Info/$OUTFILE-resolv-conf.txt
+    fi
+    
+    # DNS dinámico - diferentes comandos según el gestor de red
+    if which nmcli &>/dev/null; then
+        nmcli dev show > $OUTROOT/$OUTDIR/System_Info/$OUTFILE-nmcli-dns-info.txt
+    elif which systemd-resolve &>/dev/null; then
+        systemd-resolve --status > $OUTROOT/$OUTDIR/System_Info/$OUTFILE-systemd-dns-info.txt
+    fi
+    
+    # Grupos
+    if [ -f /etc/group ]; then
+        cp /etc/group $OUTROOT/$OUTDIR/System_Info/$OUTFILE-group.txt
+    fi
+    
+    # Información de grupos por usuario
+    for user in $(grep -v "/nologin\|/sync\|/false" /etc/passwd | cut -f1 -d ':'); do
+        echo "=== User: $user ===" >> $OUTROOT/$OUTDIR/System_Info/$OUTFILE-user-groups.txt
+        id $user 2>/dev/null >> $OUTROOT/$OUTDIR/System_Info/$OUTFILE-user-groups.txt
+    done
+    
+    # Variables de entorno globales
+    env > $OUTROOT/$OUTDIR/System_Info/$OUTFILE-global-environment.txt
+}
+
+get_additional_info_Solaris(){ #Production
+    # DNS y hosts
+    if [ -f /etc/hosts.allow ]; then
+        cp /etc/hosts.allow $OUTROOT/$OUTDIR/System_Info/$OUTFILE-hosts-allow.txt
+    fi
+    
+    if [ -f /etc/hosts.deny ]; then
+        cp /etc/hosts.deny $OUTROOT/$OUTDIR/System_Info/$OUTFILE-hosts-deny.txt
+    fi
+    
+    if [ -f /etc/resolv.conf ]; then
+        cp /etc/resolv.conf $OUTROOT/$OUTDIR/System_Info/$OUTFILE-resolv-conf.txt
+    fi
+    
+    # Grupos
+    if [ -f /etc/group ]; then
+        cp /etc/group $OUTROOT/$OUTDIR/System_Info/$OUTFILE-group.txt
+    fi
+    
+    # Información de grupos por usuario (usando sintaxis compatible con Solaris)
+    for user in $(grep "/bash" /etc/passwd | cut -f1 -d ':'); do
+        echo "=== User: $user ===" >> $OUTROOT/$OUTDIR/System_Info/$OUTFILE-user-groups.txt
+        id $user 2>/dev/null >> $OUTROOT/$OUTDIR/System_Info/$OUTFILE-user-groups.txt
+    done
+    
+    # Variables de entorno globales
+    env > $OUTROOT/$OUTDIR/System_Info/$OUTFILE-global-environment.txt
+}
 
 
 #
@@ -796,7 +869,8 @@ case $oscheck in
 			get_suspicios_data
 			echo " - Hashing potential webshells..."
 			get_pot_webshell
-			
+			echo " - Collecting additional info..."
+            get_additional_info_GNU
 			
 		} 2>> $OUTROOT/$OUTDIR/$OUTFILE-console-error-log.txt
 		;;
@@ -836,6 +910,8 @@ case $oscheck in
 			get_suspicios_data
 			echo " - Hashing potential webshells..."
 			get_pot_webshell
+			echo " - Collecting additional info..."
+            get_additional_info_GNU
 			
 		} 2>> $OUTROOT/$OUTDIR/$OUTFILE-console-error-log.txt
 		;;
@@ -875,6 +951,8 @@ case $oscheck in
 			get_suspicios_data
 			echo " - Hashing potential webshells..."
 			get_pot_webshell
+			echo " - Collecting additional info..."
+            get_additional_info_Solaris
 			
 		} 2>> $OUTROOT/$OUTDIR/$OUTFILE-console-error-log.txt
 		;;
@@ -912,6 +990,8 @@ case $oscheck in
 			get_suspicios_data
 			echo " - Hashing potential webshells..."
 			get_pot_webshell
+			echo " - Collecting additional info..."
+            get_additional_info_GNU
 			
 		} 2>> $OUTROOT/$OUTDIR/$OUTFILE-console-error-log.txt
         ;;
